@@ -1,0 +1,6 @@
+{
+  "name": "V-ACT & THPTQG Study Hub",
+  "description": "Nền tảng học tập & luyện thi THPT Quốc Gia và ĐGNL V-ACT ĐHQG TP.HCM với giao diện Glassmorphism hiện đại, bộ đếm giờ thông minh, Spotify player và No-code Visual CMS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

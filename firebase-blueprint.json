@@ -1,0 +1,189 @@
+{
+  "entities": {
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Public leaderboard and study profile for a user (PII isolated in private subcollection).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "avatar": { "type": "string", "maxLength": 1000 },
+        "bio": { "type": "string", "maxLength": 500 },
+        "totalStudySeconds": { "type": "number" },
+        "isOnline": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["user", "co_admin", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "displayName", "avatar", "bio", "totalStudySeconds", "isOnline", "role", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Isolated PII document storing user email and private account metadata.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "email", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted RBAC document identifying an administrator or co-admin.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "role": { "type": "string", "enum": ["admin", "co_admin"] },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "role", "grantedBy", "createdAt"]
+    },
+    "AppConfigDoc": {
+      "title": "AppConfigDoc",
+      "description": "Global application configuration document (stats, navbar, backgrounds, widgets, countdowns).",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "payload": { "type": "object" },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["key", "payload", "updatedBy", "createdAt", "updatedAt"]
+    },
+    "StudyMaterialDoc": {
+      "title": "StudyMaterialDoc",
+      "description": "Study material, exam paper, or lecture item in THPTQG or V-ACT zones.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "subjectId": { "type": "string", "maxLength": 64 },
+        "subCategory": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["pdf", "doc", "video", "quiz", "drive", "audio", "image", "link"] },
+        "url": { "type": "string", "maxLength": 2000 },
+        "author": { "type": "string", "maxLength": 120 },
+        "size": { "type": "string", "maxLength": 64 },
+        "views": { "type": "number" },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "subjectId", "subCategory", "type", "url", "author", "size", "views", "ownerId", "createdAt", "updatedAt"]
+    },
+    "ForumPostDoc": {
+      "title": "ForumPostDoc",
+      "description": "Student Q&A post in the Forum section.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "authorAvatar": { "type": "string", "maxLength": 1000 },
+        "subjectTag": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 5000 },
+        "likesCount": { "type": "number" },
+        "isPinned": { "type": "boolean" },
+        "isSolved": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "authorId", "authorName", "authorAvatar", "subjectTag", "title", "content", "likesCount", "isPinned", "isSolved", "createdAt", "updatedAt"]
+    },
+    "WishNoteDoc": {
+      "title": "WishNoteDoc",
+      "description": "Sticky resolution note on the StudyHub Wish Wall.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "goal": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "targetUniversity": { "type": "string", "maxLength": 200 },
+        "targetScore": { "type": "string", "maxLength": 64 },
+        "color": { "type": "string", "enum": ["yellow", "pink", "emerald", "purple", "cyan", "amber"] },
+        "likes": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "authorName", "goal", "targetUniversity", "targetScore", "color", "likes", "createdAt", "updatedAt"]
+    },
+    "SongDoc": {
+      "title": "SongDoc",
+      "description": "User or Admin contributed study music track.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "artist": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "url": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "cover": { "type": "string", "maxLength": 1000 },
+        "contributedBy": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "title", "artist", "url", "cover", "contributedBy", "createdAt", "updatedAt"]
+    },
+    "FlashcardDoc": {
+      "title": "FlashcardDoc",
+      "description": "3D Flip Flashcard item for formula and vocabulary memorization.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "question": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "answer": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "gradient": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "subject", "topic", "question", "answer", "gradient", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublicProfile" },
+      "description": "Public leaderboard and study timer profile per user (no PII)."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Isolated PII subcollection storing private email address."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Trusted administrator and co-admin role lookup collection."
+    },
+    "/app_configs/{configId}": {
+      "schema": { "$ref": "#/entities/AppConfigDoc" },
+      "description": "Global No-Code CMS configurations synced by Admin."
+    },
+    "/materials/{materialId}": {
+      "schema": { "$ref": "#/entities/StudyMaterialDoc" },
+      "description": "Study materials for THPTQG and V-ACT."
+    },
+    "/forum_posts/{postId}": {
+      "schema": { "$ref": "#/entities/ForumPostDoc" },
+      "description": "Q&A forum posts created by students and teachers."
+    },
+    "/wish_notes/{noteId}": {
+      "schema": { "$ref": "#/entities/WishNoteDoc" },
+      "description": "Sticky wish notes on the StudyHub Wish Wall."
+    },
+    "/songs/{songId}": {
+      "schema": { "$ref": "#/entities/SongDoc" },
+      "description": "Community and Admin study songs for the Spotify player."
+    },
+    "/flashcards/{cardId}": {
+      "schema": { "$ref": "#/entities/FlashcardDoc" },
+      "description": "Interactive 3D Flashcards for formulas and vocabulary."
+    }
+  }
+}

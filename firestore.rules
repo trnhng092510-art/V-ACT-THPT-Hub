@@ -1,0 +1,405 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 0: Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isEmailVerified() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && (
+        request.auth.token.email == 'trnhng092510@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // --- Entity Validation Blueprints (Pillar 2: Anti-Update-Gap) ---
+
+    function isValidUserPublicProfile(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'displayName', 'avatar', 'bio', 'totalStudySeconds', 'isOnline', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'displayName', 'avatar', 'bio', 'totalStudySeconds', 'isOnline', 'role', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && data.avatar is string && data.avatar.size() <= 1000
+        && data.bio is string && data.bio.size() <= 500
+        && data.totalStudySeconds is number && data.totalStudySeconds >= 0 && data.totalStudySeconds <= 315360000
+        && data.isOnline is bool
+        && data.role is string && data.role in ['user', 'co_admin', 'admin']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data) {
+      return data.keys().hasAll(['ownerId', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'email', 'createdAt', 'updatedAt'])
+        && isValidId(data.ownerId)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'role', 'grantedBy', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'role', 'grantedBy', 'createdAt'])
+        && isValidId(data.uid)
+        && data.role is string && data.role in ['admin', 'co_admin']
+        && isValidId(data.grantedBy)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAppConfigDoc(data) {
+      return data.keys().hasAll(['key', 'payload', 'updatedBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['key', 'payload', 'updatedBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.key)
+        && data.payload is map && data.payload.keys().size() <= 100
+        && isValidId(data.updatedBy)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStudyMaterialDoc(data) {
+      return data.keys().hasAll(['id', 'title', 'subjectId', 'subCategory', 'type', 'url', 'author', 'size', 'views', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'subjectId', 'subCategory', 'type', 'url', 'author', 'size', 'views', 'ownerId', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 300
+        && data.subjectId is string && data.subjectId.size() >= 1 && data.subjectId.size() <= 64
+        && data.subCategory is string && data.subCategory.size() >= 1 && data.subCategory.size() <= 64
+        && data.type is string && data.type in ['pdf', 'doc', 'video', 'quiz', 'drive', 'audio', 'image', 'link']
+        && data.url is string && data.url.size() >= 1 && data.url.size() <= 2000
+        && data.author is string && data.author.size() >= 1 && data.author.size() <= 120
+        && data.size is string && data.size.size() >= 1 && data.size.size() <= 64
+        && data.views is number && data.views >= 0
+        && isValidId(data.ownerId)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidForumPostDoc(data) {
+      return data.keys().hasAll(['id', 'authorId', 'authorName', 'authorAvatar', 'subjectTag', 'title', 'content', 'likesCount', 'isPinned', 'isSolved', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'authorId', 'authorName', 'authorAvatar', 'subjectTag', 'title', 'content', 'likesCount', 'isPinned', 'isSolved', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.authorId)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100
+        && data.authorAvatar is string && data.authorAvatar.size() <= 1000
+        && data.subjectTag is string && data.subjectTag.size() >= 1 && data.subjectTag.size() <= 64
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 300
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 5000
+        && data.likesCount is number && data.likesCount >= 0
+        && data.isPinned is bool
+        && data.isSolved is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWishNoteDoc(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'authorName', 'goal', 'targetUniversity', 'targetScore', 'color', 'likes', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'authorName', 'goal', 'targetUniversity', 'targetScore', 'color', 'likes', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100
+        && data.goal is string && data.goal.size() >= 1 && data.goal.size() <= 1000
+        && data.targetUniversity is string && data.targetUniversity.size() <= 200
+        && data.targetScore is string && data.targetScore.size() <= 64
+        && data.color is string && data.color in ['yellow', 'pink', 'emerald', 'purple', 'cyan', 'amber']
+        && data.likes is number && data.likes >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSongDoc(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'title', 'artist', 'url', 'cover', 'contributedBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'title', 'artist', 'url', 'cover', 'contributedBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.artist is string && data.artist.size() >= 1 && data.artist.size() <= 150
+        && data.url is string && data.url.size() >= 1 && data.url.size() <= 2000
+        && data.cover is string && data.cover.size() <= 1000
+        && data.contributedBy is string && data.contributedBy.size() >= 1 && data.contributedBy.size() <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFlashcardDoc(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'subject', 'topic', 'question', 'answer', 'gradient', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'subject', 'topic', 'question', 'answer', 'gradient', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 150
+        && data.question is string && data.question.size() >= 1 && data.question.size() <= 1000
+        && data.answer is string && data.answer.size() >= 1 && data.answer.size() <= 2000
+        && data.gradient is string && data.gradient.size() <= 120
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Public User Profiles (No PII)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && existing().id == userId;
+      allow list: if existing().totalStudySeconds >= 0;
+
+      allow create: if isEmailVerified()
+        && isValidId(userId)
+        && isValidUserPublicProfile(incoming())
+        && incoming().id == userId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().role == 'user' || isAdmin());
+
+      allow update: if isEmailVerified()
+        && isValidId(userId)
+        && isValidUserPublicProfile(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(userId)
+            && incoming().role == existing().role
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'avatar', 'bio', 'totalStudySeconds', 'isOnline', 'updatedAt'])
+          )
+          || isAdmin()
+        );
+
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      // 2. Private User PII Subcollection (Strict PII Isolation + Master Gate)
+      match /private/{docId} {
+        allow get: if isValidId(userId)
+          && isValidId(docId)
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow create: if isEmailVerified()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isValidUserPrivateInfo(incoming())
+          && incoming().ownerId == userId
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (isOwner(userId) || isAdmin())
+          && (exists(/databases/$(database)/documents/users/$(userId)) || existsAfter(/databases/$(database)/documents/users/$(userId)));
+
+        allow update: if isEmailVerified()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isValidUserPrivateInfo(incoming())
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt'])
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow delete: if isValidId(userId)
+          && isValidId(docId)
+          && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // 3. Trusted Admin RBAC Collection
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isOwner(adminUid) || isAdmin());
+      allow create: if isEmailVerified()
+        && isValidId(adminUid)
+        && isValidAdminRecord(incoming())
+        && incoming().uid == adminUid
+        && incoming().grantedBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && isAdmin();
+      allow update: if isEmailVerified()
+        && isValidId(adminUid)
+        && isValidAdminRecord(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'grantedBy'])
+        && isAdmin();
+      allow delete: if isValidId(adminUid) && isAdmin();
+    }
+
+    // 4. Global App Configurations
+    match /app_configs/{configId} {
+      allow get: if isValidId(configId) && existing().key == configId;
+      allow create: if isEmailVerified()
+        && isValidId(configId)
+        && isValidAppConfigDoc(incoming())
+        && incoming().key == configId
+        && incoming().updatedBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+      allow update: if isEmailVerified()
+        && isValidId(configId)
+        && isValidAppConfigDoc(incoming())
+        && incoming().key == existing().key
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().updatedBy == request.auth.uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+      allow delete: if isValidId(configId) && isAdmin();
+    }
+
+    // 5. Study Materials
+    match /materials/{materialId} {
+      allow get: if isValidId(materialId) && existing().id == materialId;
+      allow list: if existing().views >= 0;
+      allow create: if isEmailVerified()
+        && isValidId(materialId)
+        && isValidStudyMaterialDoc(incoming())
+        && incoming().id == materialId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+      allow update: if isEmailVerified()
+        && isValidId(materialId)
+        && isValidStudyMaterialDoc(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (incoming().diff(existing()).affectedKeys().hasOnly(['views', 'updatedAt']) && incoming().views == existing().views + 1)
+          || isAdmin()
+        );
+      allow delete: if isValidId(materialId) && isAdmin();
+    }
+
+    // 6. Forum Posts
+    match /forum_posts/{postId} {
+      allow get: if isValidId(postId) && existing().id == postId;
+      allow list: if existing().likesCount >= 0;
+      allow create: if isEmailVerified()
+        && isValidId(postId)
+        && isValidForumPostDoc(incoming())
+        && incoming().id == postId
+        && incoming().authorId == request.auth.uid
+        && incoming().isPinned == false
+        && incoming().isSolved == false
+        && incoming().likesCount == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isEmailVerified()
+        && isValidId(postId)
+        && isValidForumPostDoc(incoming())
+        && incoming().id == existing().id
+        && incoming().authorId == existing().authorId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(existing().authorId) && incoming().isPinned == existing().isPinned && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'subjectTag', 'updatedAt']))
+          || (incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'updatedAt']) && incoming().likesCount == existing().likesCount + 1)
+          || isAdmin()
+        );
+      allow delete: if isValidId(postId) && (isOwner(existing().authorId) || isAdmin());
+    }
+
+    // 7. Wish Notes
+    match /wish_notes/{noteId} {
+      allow get: if isValidId(noteId) && existing().id == noteId;
+      allow list: if existing().likes >= 0;
+      allow create: if isEmailVerified()
+        && isValidId(noteId)
+        && isValidWishNoteDoc(incoming())
+        && incoming().id == noteId
+        && incoming().ownerId == request.auth.uid
+        && incoming().likes == 1
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isEmailVerified()
+        && isValidId(noteId)
+        && isValidWishNoteDoc(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (incoming().diff(existing()).affectedKeys().hasOnly(['likes', 'updatedAt']) && incoming().likes == existing().likes + 1)
+          || isAdmin()
+        );
+      allow delete: if isValidId(noteId) && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    // 8. Community Songs
+    match /songs/{songId} {
+      allow get: if isValidId(songId) && existing().id == songId;
+      allow list: if existing().title.size() >= 1;
+      allow create: if isEmailVerified()
+        && isValidId(songId)
+        && isValidSongDoc(incoming())
+        && incoming().id == songId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isEmailVerified()
+        && isValidId(songId)
+        && isValidSongDoc(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(existing().ownerId) && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'artist', 'cover', 'updatedAt']))
+          || isAdmin()
+        );
+      allow delete: if isValidId(songId) && (isOwner(existing().ownerId) || isAdmin());
+    }
+
+    // 9. Flashcards
+    match /flashcards/{cardId} {
+      allow get: if isValidId(cardId) && existing().id == cardId;
+      allow list: if existing().question.size() >= 1;
+      allow create: if isEmailVerified()
+        && isValidId(cardId)
+        && isValidFlashcardDoc(incoming())
+        && incoming().id == cardId
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isEmailVerified()
+        && isValidId(cardId)
+        && isValidFlashcardDoc(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(existing().ownerId) && incoming().diff(existing()).affectedKeys().hasOnly(['question', 'answer', 'topic', 'subject', 'gradient', 'updatedAt']))
+          || isAdmin()
+        );
+      allow delete: if isValidId(cardId) && (isOwner(existing().ownerId) || isAdmin());
+    }
+  }
+}
